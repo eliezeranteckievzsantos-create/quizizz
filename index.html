@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz de Matemática</title>
+
+<!-- Fonte monoespaçada única, para reforçar a estética de terminal/console -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     TOKENS DE DESIGN
+     Estética de console/terminal: fundo quase preto, tipografia
+     monoespaçada em todo o projeto, âmbar como cor de ação/destaque,
+     teal para progresso, verde/vermelho só para feedback de certo/errado.
+     ============================================================ */
+  :root {
+    --bg: #0a0d10;
+    --bg-terminal: #10151a;
+    --bg-terminal-header: #171d24;
+    --bg-raised: #1a2129;
+    --bg-raised-2: #212a33;
+    --text: #d7e0e5;
+    --text-dim: #7c8a95;
+    --text-faint: #4c5761;
+    --accent: #ffb454;
+    --accent-dim: rgba(255, 180, 84, 0.14);
+    --teal: #39d9c9;
+    --correct: #3ddc84;
+    --correct-bg: rgba(61, 220, 132, 0.14);
+    --incorrect: #ff5c5c;
+    --incorrect-bg: rgba(255, 92, 92, 0.14);
+    --border: rgba(255, 255, 255, 0.09);
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .app { width: 100%; max-width: 660px; }
+
+  /* ============================================================
+     JANELA DE TERMINAL
+     ============================================================ */
+  .terminal {
+    background: var(--bg-terminal);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--bg-terminal-header);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .terminal-dots { display: flex; gap: 7px; flex-shrink: 0; }
+  .terminal-dots span {
+    width: 11px; height: 11px; border-radius: 50%;
+  }
+  .terminal-dots span:nth-child(1) { background: #ff5f56; }
+  .terminal-dots span:nth-child(2) { background: #ffbd2e; }
+  .terminal-dots span:nth-child(3) { background: #27c93f; }
+
+  .terminal-path {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminal-path .cwd { color: var(--teal); }
+  .terminal-path .prompt { color: var(--accent); }
+
+  .terminal-body {
+    padding: 32px 30px;
+  }
+
+  @media (max-width: 480px) {
+    .terminal-body { padding: 24px 18px; }
+  }
+
+  section[hidden] { display: none !important; }
+
+  /* ---------- Linha de status (progresso) ---------- */
+  .status-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .status-line .tag { color: var(--teal); }
+
+  .progress-track {
+    height: 4px;
+    background: var(--bg-raised);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 30px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--teal);
+    transition: width 0.35s ease;
+  }
+
+  /* ---------- Tela de início ---------- */
+  #screen-start .prompt-line {
+    color: var(--text-faint);
+    font-size: 13px;
+    margin: 0 0 4px;
+  }
+
+  #screen-start .prompt-line .sym { color: var(--accent); }
+
+  #screen-start h1 {
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0 0 14px;
+    color: var(--text);
+  }
+
+  #screen-start h1 .cursor {
+    display: inline-block;
+    width: 9px; height: 20px;
+    background: var(--accent);
+    margin-left: 6px;
+    vertical-align: middle;
+    animation: blink 1s steps(1) infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  #screen-start > p {
+    color: var(--text-dim);
+    font-size: 13.5px;
+    line-height: 1.7;
+    margin: 0 0 22px;
+    max-width: 52ch;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+
+  .meta-row span {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 10px;
+  }
+
+  /* ---------- Campos de nome e idade ---------- */
+  .player-fields {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+
+  .name-field { flex: 1; }
+  .age-field { width: 108px; flex-shrink: 0; }
+
+  @media (max-width: 480px) {
+    .player-fields { flex-direction: column; }
+    .age-field { width: 100%; }
+  }
+
+  .name-field label,
+  .age-field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 7px;
+  }
+
+  .name-field label::before,
+  .age-field label::before { content: "> "; color: var(--accent); }
+
+  .name-field input,
+  .age-field input {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 11px 13px;
+  }
+
+  .name-field input::placeholder,
+  .age-field input::placeholder { color: var(--text-faint); }
+
+  .name-field input:focus-visible,
+  .age-field input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .field-error {
+    color: var(--incorrect);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+    min-height: 16px;
+  }
+
+  .start-actions { margin: 22px 0 32px; }
+
+  /* ---------- Botões ---------- */
+  button {
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    transition: transform 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #16110a;
+    padding: 12px 22px;
+    text-transform: uppercase;
+  }
+
+  .btn-primary:hover { background: #ffc575; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-primary:disabled {
+    background: var(--bg-raised);
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+
+  .btn-text {
+    background: transparent;
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .btn-text:hover { color: var(--incorrect); border-color: var(--incorrect); }
+
+  /* ---------- Tela de pergunta ---------- */
+  .difficulty-badge {
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .difficulty-badge.dif-facil {
+    color: var(--correct);
+    border-color: rgba(61, 220, 132, 0.4);
+    background: var(--correct-bg);
+  }
+
+  .difficulty-badge.dif-medio {
+    color: var(--accent);
+    border-color: rgba(255, 180, 84, 0.4);
+    background: var(--accent-dim);
+  }
+
+  .difficulty-badge.dif-dificil {
+    color: var(--incorrect);
+    border-color: rgba(255, 92, 92, 0.4);
+    background: var(--incorrect-bg);
+  }
+
+  #question-text {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.6;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .options {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    width: 100%;
+    text-align: left;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 13px 15px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .option:hover:not(:disabled) {
+    border-color: var(--teal);
+    background: rgba(57, 217, 201, 0.08);
+  }
+
+  .option .letter {
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .option.is-correct {
+    border-color: var(--correct);
+    background: var(--correct-bg);
+  }
+  .option.is-correct .letter { color: var(--correct); }
+
+  .option.is-incorrect {
+    border-color: var(--incorrect);
+    background: var(--incorrect-bg);
+  }
+  .option.is-incorrect .letter { color: var(--incorrect); }
+
+  .option:disabled { cursor: default; }
+
+  /* ---------- Explicação comentada ---------- */
+  .explanation {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 4px;
+    border-left: 3px solid var(--teal);
+    background: var(--bg-raised);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    animation: reveal 0.2s ease;
+  }
+
+  .explanation strong {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .explanation.verdict-correct strong { color: var(--correct); }
+  .explanation.verdict-incorrect strong { color: var(--incorrect); }
+
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .question-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  /* ---------- Tela de resultado ---------- */
+  #screen-result h1 {
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--text);
+  }
+
+  .score-display {
+    font-size: 44px;
+    font-weight: 700;
+    color: var(--teal);
+    margin: 20px 0 4px;
+  }
+
+  .score-caption {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin: 0 0 26px;
+  }
+
+  .result-list {
+    list-style: none;
+    margin: 0 0 30px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 4px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+  }
+
+  .result-row .mark { font-weight: 700; width: 16px; text-align: center; }
+  .result-row.ok .mark { color: var(--correct); }
+  .result-row.fail .mark { color: var(--incorrect); }
+  .result-row .q-label { color: var(--text-dim); flex: 1; }
+
+  .result-actions { display: flex; gap: 12px; }
+
+  /* ---------- Placar (top 10) ---------- */
+  .leaderboard { margin-top: 6px; padding-top: 22px; border-top: 1px dashed var(--border); }
+
+  .leaderboard-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .leaderboard-title h3 {
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--text);
+  }
+
+  .leaderboard-title h3::before { content: "$ "; color: var(--accent); }
+
+  .leaderboard-actions { display: flex; align-items: center; gap: 10px; }
+
+  .leaderboard-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .leaderboard-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px;
+    border-radius: 4px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+
+  .leaderboard-row.is-first { border-color: var(--accent); background: var(--accent-dim); }
+
+  .leaderboard-rank { color: var(--text-faint); width: 22px; flex-shrink: 0; }
+  .leaderboard-row.is-first .leaderboard-rank { color: var(--accent); }
+
+  .leaderboard-name {
+    flex: 1;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .leaderboard-score { color: var(--teal); flex-shrink: 0; }
+
+  .leaderboard-empty,
+  .leaderboard-status {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+
+<main class="app">
+  <div class="terminal">
+
+    <!-- Cabeçalho estilo janela de terminal (decorativo) -->
+    <div class="terminal-header">
+      <div class="terminal-dots"><span></span><span></span><span></span></div>
+      <div class="terminal-path">
+        <span class="cwd">aluno@matematica</span><span class="prompt">:~$</span>
+        <span id="terminal-file">./quiz_matematica.sh</span>
+      </div>
+    </div>
+
+    <div class="terminal-body">
+
+      <!-- Linha de status: progresso da sessão -->
+      <div class="status-line">
+        <span><span class="tag">STATUS</span> // sessão de matemática</span>
+        <span id="progress-label">0 / 0</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <!-- ============ TELA 1: INÍCIO ============ -->
+      <section id="screen-start">
+        <p class="prompt-line"><span class="sym">$</span> iniciar --materia matematica</p>
+        <h1>Quiz de Matemática<span class="cursor"></span></h1>
+        <p>
+          Questões de álgebra, geometria, trigonometria, sequências e
+          probabilidade, com dificuldade crescente. Depois de cada resposta
+          você vê uma explicação comentada mostrando o cálculo completo.
+        </p>
+        <div class="meta-row">
+          <span><strong id="total-questions-label">10</strong> perguntas</span>
+          <span>Múltipla escolha</span>
+          <span>Alternativas embaralhadas</span>
+        </div>
+
+        <!-- Nome e idade do jogador, exigidos antes de começar -->
+        <div class="player-fields">
+          <div class="name-field">
+            <label for="player-name-input">nome</label>
+            <input
+              type="text"
+              id="player-name-input"
+              placeholder="digite seu nome"
+              maxlength="30"
+              autocomplete="off">
+          </div>
+          <div class="age-field">
+            <label for="player-age-input">idade</label>
+            <input
+              type="number"
+              id="player-age-input"
+              placeholder="16"
+              min="1"
+              max="120"
+              inputmode="numeric">
+          </div>
+        </div>
+        <p class="field-error" id="name-error"></p>
+
+        <div class="start-actions">
+          <button class="btn-primary" id="btn-start">Executar quiz</button>
+        </div>
+
+        <!-- Placar com os 10 melhores resultados -->
+        <div class="leaderboard">
+          <div class="leaderboard-title">
+            <h3>placar --top 10</h3>
+            <div class="leaderboard-actions">
+              <span id="leaderboard-note" class="leaderboard-status">acertos</span>
+              <button class="btn-text" id="btn-clear-leaderboard" type="button">Zerar placar</button>
+            </div>
+          </div>
+          <ol class="leaderboard-list" id="leaderboard-list"></ol>
+          <p class="leaderboard-empty" id="leaderboard-empty" hidden>
+            Placar vazio. Seja o primeiro a jogar!
+          </p>
+          <p class="leaderboard-status" id="leaderboard-status">Carregando placar…</p>
+        </div>
+      </section>
+
+      <!-- ============ TELA 2: PERGUNTA ATUAL ============ -->
+      <section id="screen-question" hidden>
+        <div class="status-line" style="margin-bottom: 14px;">
+          <span id="question-index">Pergunta 1</span>
+          <span class="difficulty-badge" id="difficulty-badge"></span>
+        </div>
+        <h2 id="question-text"></h2>
+
+        <ul class="options" id="options-list"></ul>
+
+        <!-- A explicação comentada é inserida aqui após o usuário responder -->
+        <div id="explanation-slot"></div>
+
+        <div class="question-footer">
+          <button class="btn-primary" id="btn-next" disabled>Próxima pergunta</button>
+        </div>
+      </section>
+
+      <!-- ============ TELA 3: RESULTADO FINAL ============ -->
+      <section id="screen-result" hidden>
+        <p class="prompt-line"><span class="sym">$</span> ./quiz_matematica.sh --resultado</p>
+        <h1 id="result-title">Resultado</h1>
+        <div class="score-display" id="score-display">0/0</div>
+        <p class="score-caption" id="score-caption"></p>
+
+        <ul class="result-list" id="result-list"></ul>
+
+        <div class="result-actions">
+          <button class="btn-primary" id="btn-restart">Jogar novamente</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     BANCO DE PERGUNTAS — MATEMÁTICA
+     Cada pergunta tem: nível de dificuldade, enunciado, alternativas,
+     índice da correta (no array original) e explicação comentada com
+     o cálculo completo, exibida após a resposta. A posição em que as
+     alternativas aparecem na tela é sorteada em tempo de execução.
+     ============================================================ */
+  var QUESTIONS = [
+    {
+      dificuldade: "dificil",
+      text: "Resolvendo log₂(x) + log₂(x − 2) = 3, qual é o valor de x?",
+      options: ["4", "2", "8", "-2"],
+      correct: 0,
+      explanation: "Pela propriedade dos logaritmos, log₂[x·(x−2)] = 3, logo x·(x−2) = 2³ = 8, ou seja, x² − 2x − 8 = 0. As raízes são x = 4 e x = −2, mas x = −2 é descartado porque log de número negativo não existe. Logo, x = 4."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Qual é o volume aproximado de um cone com raio da base 3 cm e altura 8 cm? (use π ≈ 3,14)",
+      options: ["75,36 cm³", "37,68 cm³", "150,72 cm³", "25,12 cm³"],
+      correct: 0,
+      explanation: "O volume do cone é V = (1/3) · π · r² · h = (1/3) · 3,14 · 9 · 8 = (1/3) · 226,08 = 75,36 cm³. Esquecer o fator 1/3 (fórmula do cilindro) leva ao valor incorreto de 150,72 cm³."
+    },
+    {
+      dificuldade: "medio",
+      text: "De quantas maneiras diferentes é possível escolher uma comissão de 3 pessoas dentre um grupo de 7, sem levar em conta a ordem?",
+      options: ["35", "210", "21", "42"],
+      correct: 0,
+      explanation: "Como a ordem não importa, usamos combinação: C(7,3) = 7! / (3! · 4!) = (7·6·5) / (3·2·1) = 210 / 6 = 35. Usar arranjo (7·6·5 = 210) sem dividir pela ordem interna é o erro mais comum."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Qual é a soma dos 20 primeiros termos da progressão aritmética (3, 7, 11, 15, ...)?",
+      options: ["820", "800", "780", "760"],
+      correct: 0,
+      explanation: "A razão é r = 4. Usando Sₙ = n/2 · [2a₁ + (n−1)·r]: S₂₀ = 20/2 · [2·3 + 19·4] = 10 · [6 + 76] = 10 · 82 = 820. Usar n em vez de (n−1) no termo da razão leva a um resultado próximo, porém incorreto."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Se sen(x) = 3/5 e x está no primeiro quadrante, qual é o valor de cos(2x)?",
+      options: ["7/25", "24/25", "-7/25", "1/5"],
+      correct: 0,
+      explanation: "Usando a identidade cos(2x) = 1 − 2·sen²(x): cos(2x) = 1 − 2·(3/5)² = 1 − 2·(9/25) = 1 − 18/25 = 7/25. Confundir essa identidade com cos(2x) = 2·cos²(x) − 1 sem recalcular o cosseno de x é a fonte mais comum de erro aqui."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Dadas as funções f(x) = 2x + 1 e g(x) = x² − 3, qual é o valor de f(g(2))?",
+      options: ["3", "5", "1", "-1"],
+      correct: 0,
+      explanation: "Primeiro calcula-se g(2) = 2² − 3 = 4 − 3 = 1. Depois, f(g(2)) = f(1) = 2·1 + 1 = 3. Calcular f(2) e depois aplicar g (invertendo a ordem da composição) leva ao valor incorreto de 5."
+    },
+    {
+      dificuldade: "medio",
+      text: "Resolvendo o sistema 2x + 3y = 12 e x − y = 1, qual é o valor de x + y?",
+      options: ["5", "7", "3", "1"],
+      correct: 0,
+      explanation: "Da segunda equação, x = 1 + y. Substituindo na primeira: 2(1+y) + 3y = 12 → 2 + 5y = 12 → y = 2, logo x = 3. Assim, x + y = 3 + 2 = 5."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Uma urna contém 4 bolas vermelhas e 6 bolas azuis. Duas bolas são retiradas ao acaso, sem reposição. Qual é a probabilidade de as duas serem vermelhas?",
+      options: ["2/15", "4/10", "6/15", "1/15"],
+      correct: 0,
+      explanation: "P = (4/10) · (3/9) = 12/90 = 2/15. É essencial reduzir o número de bolas vermelhas e o total após a primeira retirada (sem reposição); ignorar isso e multiplicar 4/10 por 4/10 levaria a um erro."
+    },
+    {
+      dificuldade: "dificil",
+      text: "Um capital de R$ 1.000,00 é aplicado a juros compostos de 10% ao ano, durante 2 anos. Qual é o montante final?",
+      options: ["R$ 1.210,00", "R$ 1.200,00", "R$ 1.100,00", "R$ 1.331,00"],
+      correct: 0,
+      explanation: "No regime composto, M = C · (1 + i)ⁿ = 1000 · (1,1)² = 1000 · 1,21 = R$ 1.210,00. Usar juros simples (M = C·(1+i·n) = 1200) é o erro mais comum ao confundir os dois regimes."
+    },
+    {
+      dificuldade: "medio",
+      text: "Qual é a distância entre os pontos A(1, 2) e B(4, 6) no plano cartesiano?",
+      options: ["5", "7", "25", "6"],
+      correct: 0,
+      explanation: "Pela fórmula da distância, d = √[(4−1)² + (6−2)²] = √(9 + 16) = √25 = 5. Esquecer a raiz quadrada final e responder 25 é o erro mais frequente nesse tipo de questão."
+    }
+  ];
+
+  // Rótulos exibidos no selo de dificuldade
+  var DIFFICULTY_LABELS = {
+    facil: "Fácil",
+    medio: "Médio",
+    dificil: "Difícil"
+  };
+
+  /* ============================================================
+     ESTADO DA APLICAÇÃO
+     ============================================================ */
+  var state = {
+    playerName: '',      // nome digitado antes de começar
+    playerAge: null,     // idade digitada antes de começar
+    currentIndex: 0,     // índice da pergunta atual (dentro de sessionQuestions)
+    score: 0,            // acertos até agora
+    answered: false,     // se a pergunta atual já foi respondida
+    log: [],             // histórico de acertos/erros para a tela final
+    sessionQuestions: [] // ordem das perguntas sorteada para esta partida
+  };
+
+  /* ============================================================
+     REFERÊNCIAS DE ELEMENTOS DO DOM
+     ============================================================ */
+  var screenStart = document.getElementById('screen-start');
+  var screenQuestion = document.getElementById('screen-question');
+  var screenResult = document.getElementById('screen-result');
+
+  var nameInput = document.getElementById('player-name-input');
+  var ageInput = document.getElementById('player-age-input');
+  var nameError = document.getElementById('name-error');
+
+  var btnStart = document.getElementById('btn-start');
+  var btnNext = document.getElementById('btn-next');
+  var btnRestart = document.getElementById('btn-restart');
+  var btnClearLeaderboard = document.getElementById('btn-clear-leaderboard');
+
+  var progressLabel = document.getElementById('progress-label');
+  var progressFill = document.getElementById('progress-fill');
+  var totalQuestionsLabel = document.getElementById('total-questions-label');
+
+  var questionIndexEl = document.getElementById('question-index');
+  var difficultyBadgeEl = document.getElementById('difficulty-badge');
+  var questionTextEl = document.getElementById('question-text');
+  var optionsListEl = document.getElementById('options-list');
+  var explanationSlot = document.getElementById('explanation-slot');
+
+  var resultTitle = document.getElementById('result-title');
+  var scoreDisplay = document.getElementById('score-display');
+  var scoreCaption = document.getElementById('score-caption');
+  var resultList = document.getElementById('result-list');
+
+  var leaderboardList = document.getElementById('leaderboard-list');
+  var leaderboardEmpty = document.getElementById('leaderboard-empty');
+  var leaderboardStatus = document.getElementById('leaderboard-status');
+
+  totalQuestionsLabel.textContent = QUESTIONS.length;
+
+  /* ============================================================
+     PLACAR (TOP 10) — capability "db" do artefato publicado
+     Guarda uma coleção "scores" com um documento por partida
+     concluída: { name, age, score, total, percentage, timestamp }.
+     Se a capability não estiver disponível nesta visualização,
+     o placar é ocultado e o quiz continua funcionando normalmente.
+     ============================================================ */
+  var db = null;
+
+  function renderLeaderboard(docs) {
+    leaderboardStatus.hidden = true;
+    leaderboardList.innerHTML = '';
+
+    if (!docs || docs.length === 0) {
+      leaderboardEmpty.hidden = false;
+      return;
+    }
+    leaderboardEmpty.hidden = true;
+
+    docs.forEach(function (docSnap, index) {
+      var entry = docSnap.data() || {};
+      var li = document.createElement('li');
+      li.className = 'leaderboard-row' + (index === 0 ? ' is-first' : '');
+
+      var rank = document.createElement('span');
+      rank.className = 'leaderboard-rank';
+      rank.textContent = String(index + 1).padStart(2, '0') + '.';
+
+      var name = document.createElement('span');
+      name.className = 'leaderboard-name';
+      name.textContent = (entry.name || 'Anônimo') + (entry.age ? ' (' + entry.age + ')' : '');
+
+      var score = document.createElement('span');
+      score.className = 'leaderboard-score';
+      score.textContent = (entry.score != null ? entry.score : 0) + '/' + (entry.total != null ? entry.total : QUESTIONS.length);
+
+      li.appendChild(rank);
+      li.appendChild(name);
+      li.appendChild(score);
+      leaderboardList.appendChild(li);
+    });
+  }
+
+  // Identifica esta versão do projeto: usado para zerar o placar
+  // automaticamente uma única vez quando esta nova estrutura entra
+  // no ar, sem apagar pontuações de partidas futuras a cada reload.
+  var RESET_FLAG_ID = 'reset_matematica_v1';
+
+  function autoResetLeaderboardOnce() {
+    var flagRef = db.doc('meta/' + RESET_FLAG_ID);
+    flagRef.get().then(function (snap) {
+      if (snap.exists) return; // já foi zerado nesta versão
+
+      db.collection('scores').limit(1000).get().then(function (snapshot) {
+        snapshot.docs.forEach(function (docSnap) {
+          db.collection('scores').doc(docSnap.id).delete().catch(function () {});
+        });
+      }).catch(function () {});
+
+      flagRef.set({ resetAt: Date.now() }).catch(function () {});
+    }).catch(function () {});
+  }
+
+  function clearLeaderboardManually() {
+    if (!db) return;
+    var confirmed = window.confirm('Apagar todas as pontuações do placar? Essa ação não pode ser desfeita.');
+    if (!confirmed) return;
+
+    db.collection('scores').limit(1000).get().then(function (snapshot) {
+      snapshot.docs.forEach(function (docSnap) {
+        db.collection('scores').doc(docSnap.id).delete().catch(function () {});
+      });
+    }).catch(function () {});
+  }
+
+  function initLeaderboard() {
+    if (!window.claude || typeof window.claude.use !== 'function') {
+      leaderboardStatus.textContent = 'Placar indisponível nesta visualização.';
+      return;
+    }
+
+    window.claude.use('db').then(function (dbNamespace) {
+      db = dbNamespace;
+
+      if (!db) {
+        leaderboardStatus.textContent = 'Placar indisponível nesta visualização.';
+        return;
+      }
+
+      autoResetLeaderboardOnce();
+
+      // Assina a lista dos 10 melhores, em ordem decrescente de acertos.
+      db.collection('scores')
+        .orderBy('score', 'desc')
+        .limit(10)
+        .onSnapshot(
+          function (snapshot) {
+            renderLeaderboard(snapshot.docs);
+          },
+          function () {
+            leaderboardStatus.hidden = false;
+            leaderboardStatus.textContent = 'Não foi possível carregar o placar agora.';
+          }
+        );
+    }).catch(function () {
+      leaderboardStatus.textContent = 'Placar indisponível nesta visualização.';
+    });
+  }
+
+  function saveScoreToLeaderboard() {
+    if (!db) return;
+
+    var total = QUESTIONS.length;
+    var percentage = Math.round((state.score / total) * 100);
+
+    db.collection('scores').add({
+      name: state.playerName,
+      age: state.playerAge,
+      score: state.score,
+      total: total,
+      percentage: percentage,
+      timestamp: Date.now()
+    }).catch(function () {
+      // Falha silenciosa: o resultado do jogador continua visível na
+      // tela de resultado mesmo que o registro no placar não funcione.
+    });
+  }
+
+  btnClearLeaderboard.addEventListener('click', clearLeaderboardManually);
+
+  /* ============================================================
+     NAVEGAÇÃO ENTRE TELAS
+     ============================================================ */
+  function showScreen(screen) {
+    screenStart.hidden = screen !== screenStart;
+    screenQuestion.hidden = screen !== screenQuestion;
+    screenResult.hidden = screen !== screenResult;
+  }
+
+  function updateProgress() {
+    var current = state.currentIndex + 1;
+    var total = QUESTIONS.length;
+    progressLabel.textContent = current + ' / ' + total;
+    progressFill.style.width = ((current - 1) / total * 100) + '%';
+  }
+
+  /* ============================================================
+     TELA DE INÍCIO: valida nome e idade, e inicia o quiz
+     ============================================================ */
+  function handleStart() {
+    var name = nameInput.value.trim();
+    var ageRaw = ageInput.value.trim();
+    var age = Number(ageRaw);
+
+    if (name.length === 0) {
+      nameError.textContent = 'Digite seu nome para começar.';
+      nameInput.focus();
+      return;
+    }
+
+    if (ageRaw.length === 0 || !Number.isFinite(age) || age <= 0) {
+      nameError.textContent = 'Digite uma idade válida para começar.';
+      ageInput.focus();
+      return;
+    }
+
+    nameError.textContent = '';
+    state.playerName = name;
+    state.playerAge = age;
+    state.currentIndex = 0;
+    state.score = 0;
+    state.log = [];
+
+    // Sorteia a ordem das perguntas para esta partida, além da ordem
+    // das alternativas (já sorteada em renderQuestion) — assim cada
+    // jogador tem uma sequência diferente de perguntas.
+    var order = shuffledIndices(QUESTIONS.length);
+    state.sessionQuestions = order.map(function (i) { return QUESTIONS[i]; });
+
+    renderQuestion();
+    showScreen(screenQuestion);
+  }
+
+  // Permite começar apertando Enter em qualquer um dos campos
+  nameInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') handleStart();
+  });
+  ageInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') handleStart();
+  });
+
+  /* ============================================================
+     EMBARALHA UM ARRAY DE ÍNDICES (Fisher–Yates)
+     ============================================================ */
+  function shuffledIndices(length) {
+    var order = [];
+    for (var i = 0; i < length; i++) order.push(i);
+    for (var j = order.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var temp = order[j];
+      order[j] = order[k];
+      order[k] = temp;
+    }
+    return order;
+  }
+
+  /* ============================================================
+     RENDERIZA A PERGUNTA ATUAL
+     ============================================================ */
+  function renderQuestion() {
+    state.answered = false;
+    explanationSlot.innerHTML = '';
+    btnNext.disabled = true;
+    btnNext.textContent = (state.currentIndex === QUESTIONS.length - 1)
+      ? 'Ver resultado'
+      : 'Próxima pergunta';
+
+    var question = state.sessionQuestions[state.currentIndex];
+    questionIndexEl.textContent = 'Pergunta ' + (state.currentIndex + 1) + ' de ' + QUESTIONS.length;
+
+    difficultyBadgeEl.textContent = DIFFICULTY_LABELS[question.dificuldade] || '';
+    difficultyBadgeEl.className = 'difficulty-badge dif-' + question.dificuldade;
+
+    questionTextEl.textContent = question.text;
+
+    optionsListEl.innerHTML = '';
+    var letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+    // A ordem de exibição é sorteada a cada pergunta; "data-index" guarda
+    // o índice ORIGINAL de cada opção (o mesmo usado em question.correct).
+    var displayOrder = shuffledIndices(question.options.length);
+
+    displayOrder.forEach(function (originalIndex, position) {
+      var optionText = question.options[originalIndex];
+
+      var li = document.createElement('li');
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'option';
+      button.setAttribute('data-index', originalIndex);
+
+      var letterSpan = document.createElement('span');
+      letterSpan.className = 'letter';
+      letterSpan.textContent = '[' + letters[position] + ']';
+
+      var textSpan = document.createElement('span');
+      textSpan.textContent = optionText;
+
+      button.appendChild(letterSpan);
+      button.appendChild(textSpan);
+      button.addEventListener('click', function () {
+        handleAnswer(originalIndex, button);
+      });
+
+      li.appendChild(button);
+      optionsListEl.appendChild(li);
+    });
+
+    updateProgress();
+  }
+
+  /* ============================================================
+     TRATA A RESPOSTA SELECIONADA
+     ============================================================ */
+  function handleAnswer(selectedIndex, selectedButton) {
+    if (state.answered) return; // impede responder duas vezes a mesma pergunta
+    state.answered = true;
+
+    var question = state.sessionQuestions[state.currentIndex];
+    var isCorrect = selectedIndex === question.correct;
+
+    // Desabilita todas as opções e aplica o feedback visual
+    var allButtons = optionsListEl.querySelectorAll('.option');
+    allButtons.forEach(function (btn) {
+      btn.disabled = true;
+      var btnIndex = Number(btn.getAttribute('data-index'));
+
+      if (btnIndex === question.correct) {
+        btn.classList.add('is-correct');
+      } else if (btnIndex === selectedIndex && !isCorrect) {
+        btn.classList.add('is-incorrect');
+      }
+    });
+
+    // Monta a explicação comentada
+    var explanationBox = document.createElement('div');
+    explanationBox.className = 'explanation ' + (isCorrect ? 'verdict-correct' : 'verdict-incorrect');
+
+    var verdictStrong = document.createElement('strong');
+    verdictStrong.textContent = isCorrect ? 'Resposta correta' : 'Resposta incorreta';
+
+    var explanationText = document.createElement('span');
+    explanationText.textContent = question.explanation;
+
+    explanationBox.appendChild(verdictStrong);
+    explanationBox.appendChild(explanationText);
+    explanationSlot.appendChild(explanationBox);
+
+    // Atualiza pontuação e histórico
+    if (isCorrect) state.score += 1;
+    state.log.push({ text: question.text, correct: isCorrect });
+
+    btnNext.disabled = false;
+  }
+
+  /* ============================================================
+     AVANÇA PARA A PRÓXIMA PERGUNTA OU PARA O RESULTADO
+     ============================================================ */
+  function goToNext() {
+    if (state.currentIndex < QUESTIONS.length - 1) {
+      state.currentIndex += 1;
+      renderQuestion();
+    } else {
+      renderResult();
+    }
+  }
+
+  /* ============================================================
+     RENDERIZA A TELA DE RESULTADO FINAL
+     ============================================================ */
+  function renderResult() {
+    progressFill.style.width = '100%';
+    progressLabel.textContent = QUESTIONS.length + ' / ' + QUESTIONS.length;
+
+    resultTitle.textContent = 'Resultado de ' + state.playerName;
+    scoreDisplay.textContent = state.score + '/' + QUESTIONS.length;
+
+    var percentage = Math.round((state.score / QUESTIONS.length) * 100);
+    var caption;
+    if (percentage >= 80) {
+      caption = 'Excelente domínio dos conceitos de matemática (' + percentage + '%).';
+    } else if (percentage >= 50) {
+      caption = 'Bom resultado, mas vale revisar alguns tópicos (' + percentage + '%).';
+    } else {
+      caption = 'Vale a pena rever o conteúdo com calma (' + percentage + '%).';
+    }
+    scoreCaption.textContent = caption;
+
+    resultList.innerHTML = '';
+    state.log.forEach(function (entry, index) {
+      var li = document.createElement('li');
+      li.className = 'result-row ' + (entry.correct ? 'ok' : 'fail');
+
+      var mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = entry.correct ? '✓' : '✗';
+
+      var label = document.createElement('span');
+      label.className = 'q-label';
+      label.textContent = (index + 1) + '. ' + entry.text;
+
+      li.appendChild(mark);
+      li.appendChild(label);
+      resultList.appendChild(li);
+    });
+
+    saveScoreToLeaderboard();
+    showScreen(screenResult);
+  }
+
+  /* ============================================================
+     VOLTA À TELA DE INÍCIO PARA UMA NOVA PARTIDA
+     ============================================================ */
+  function goToStart() {
+    nameInput.value = '';
+    ageInput.value = '';
+    nameError.textContent = '';
+    state.answered = false;
+    progressFill.style.width = '0%';
+    progressLabel.textContent = '0 / ' + QUESTIONS.length;
+    showScreen(screenStart);
+    nameInput.focus();
+  }
+
+  /* ============================================================
+     EVENTOS PRINCIPAIS
+     ============================================================ */
+  btnStart.addEventListener('click', handleStart);
+  btnNext.addEventListener('click', goToNext);
+  btnRestart.addEventListener('click', goToStart);
+
+  // Estado inicial: tela de início, progresso zerado, placar carregando
+  progressLabel.textContent = '0 / ' + QUESTIONS.length;
+  initLeaderboard();
+
+}());
+</script>
+
+</body>
+</html>
